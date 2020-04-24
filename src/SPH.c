@@ -54,26 +54,25 @@ void simulate_boundary(Grid* grid, Particle** particles, Particle_derivatives** 
     for (int iter = 0; iter < setup->itermax; iter++) {
         printf("----------------------------------------------------- \n");
         printf("iter %d / %d @ t = %lf \n", iter, setup->itermax, current_time);
-        //clock_t t0 = clock();
+        clock_t t0 = clock();
         update_verlet_cells(grid, particles, n_p, verlet);
         update_neighborhoods(grid, particles, n_p, iter, setup->verlet);
-        //clock_t t1 = clock();
-        //printf("time for neighborhood update without verlet : %f \n",(double)(t1-t0));
+        clock_t t1 = clock();
+        printf("time for neighborhood update without verlet : %f \n",(double)(t1-t0));
         if (animation != NULL){
             display_particles_boundary(particles, animation, false,iter,bounds);
         }
+        clock_t t2 = clock();
         update_positions(grid, particles, particles_derivatives, residuals, n_p, setup);
-
+        clock_t t3 = clock();
+        printf("time for neighborhood update without verlet : %f \n",(double)(t3-t2));
         printf("velocity_max = %f\n", max_velocity(particles,n_p));
         reflective_boundary(particles,n_p,boundary,Rp);
         if (iter%ii == 0){
             // density_correction_MLS(particles, n_p, setup->kh, setup->kernel);
         }
-        get_M0(particles,n_p,setup->kh,setup->kernel);
-        get_M1(particles,n_p,setup->kh,setup->kernel);
         current_time += setup->timestep;
     }
-    
     update_verlet_cells(grid, particles, n_p, verlet);
     update_neighborhoods(grid, particles, n_p, 0, setup->verlet);
     if (animation != NULL)
@@ -84,10 +83,10 @@ void simulate_boundary(Grid* grid, Particle** particles, Particle_derivatives** 
 void update_positions_seminar_5(Grid* grid, Particle** particles, Particle_derivatives** particles_derivatives, Residual** residuals, int n_p, Setup* setup) {
 
 	// Compute Cs, the XSPH correction on the velocity, and the divergence of the positions
-	for (int i = 0; i < n_p; i++) {
-		compute_Cs(particles[i], setup->kernel, setup->kh);
-		if (setup->XSPH_epsilon != 0.0) compute_XSPH_correction(particles[i], setup->kernel, setup->kh,setup->XSPH_epsilon);
-	}
+	//for (int i = 0; i < n_p; i++) {
+		//compute_Cs(particles[i], setup->kernel, setup->kh);
+		//if (setup->XSPH_epsilon != 0.0) compute_XSPH_correction(particles[i], setup->kernel, setup->kh,setup->XSPH_epsilon);
+	//}
 
 	// Compute derivatives and normal
 	for (int i = 0; i < n_p; i++) {
@@ -95,22 +94,27 @@ void update_positions_seminar_5(Grid* grid, Particle** particles, Particle_deriv
 		particles_derivatives[i]->lapl_v->x = compute_lapl(particles[i], Particle_get_v_x, setup->kernel, setup->kh);
 		particles_derivatives[i]->lapl_v->y = compute_lapl(particles[i], Particle_get_v_y, setup->kernel, setup->kh);
 		compute_grad(particles[i], Particle_get_P, setup->kernel, setup->kh, particles_derivatives[i]->grad_P);
+        compute_Cs(particles[i], setup->kernel, setup->kh);
 		compute_grad(particles[i], Particle_get_Cs, setup->kernel, setup->kh, particles_derivatives[i]->grad_Cs);
 		particles_derivatives[i]->lapl_Cs = compute_lapl(particles[i], Particle_get_Cs, setup->kernel, setup->kh);
 		// assemble_residual_NS(particles[i], particles_derivatives[i], residuals[i], setup);
 		compute_normal(particles[i], particles_derivatives[i]);
+        
+        assemble_residual_NS(particles[i], particles_derivatives[i], residuals[i], setup);
+        time_integrate(particles[i], residuals[i], setup->timestep);
 	}
 
 	// Assemble residual and compute curvature
+    /*
 	for (int i = 0; i < n_p; i++) {
 	    //particles[i]->kappa = 2.0*compute_div(particles[i], Particle_get_normal, setup->kernel, setup->kh);
-	    assemble_residual_NS(particles[i], particles_derivatives[i], residuals[i], setup);
+	    
 	}
 
 	// Integrate (obtain new values, i.e. density, velocities, pressure and positions, at time t+1)
 	for (int i = 0; i < n_p; i++)
-		time_integrate(particles[i], residuals[i], setup->timestep);
 		// time_integrate_CSPM(particles[i],particles_derivatives[i], residuals[i], setup);
+     */
 }
 
 void compute_Cs(Particle *particle, Kernel kernel, double kh) {
