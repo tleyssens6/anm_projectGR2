@@ -58,15 +58,15 @@ void simulate_boundary(Grid* grid, Particle** particles, Particle_derivatives** 
         update_verlet_cells(grid, particles, n_p, verlet);
         update_neighborhoods(grid, particles, n_p, iter, setup->verlet);
         clock_t t1 = clock();
-        printf("time for neighborhood update without verlet : %f \n",(double)(t1-t0));
+        //printf("time for neighborhood update : %f \n",(double)(t1-t0));
         if (animation != NULL){
             display_particles_boundary(particles, animation, false,iter,bounds);
         }
         clock_t t2 = clock();
         update_positions(grid, particles, particles_derivatives, residuals, n_p, setup);
         clock_t t3 = clock();
-        printf("time for neighborhood update without verlet : %f \n",(double)(t3-t2));
-        printf("velocity_max = %f\n", max_velocity(particles,n_p));
+        //printf("time for position update : %f \n",(double)(t3-t2));
+        //printf("velocity_max = %f\n", max_velocity(particles,n_p));
         reflective_boundary(particles,n_p,boundary,Rp);
         if (iter%ii == 0){
             // density_correction_MLS(particles, n_p, setup->kh, setup->kernel);
@@ -90,16 +90,20 @@ void update_positions_seminar_5(Grid* grid, Particle** particles, Particle_deriv
 
 	// Compute derivatives and normal
 	for (int i = 0; i < n_p; i++) {
-		particles_derivatives[i]->div_v = compute_div(particles[i], Particle_get_v, setup->kernel, setup->kh);
+        compute_Cs(particles[i], setup->kernel, setup->kh);
+		
+        /*
+        particles_derivatives[i]->div_v = compute_div(particles[i], Particle_get_v, setup->kernel, setup->kh);
 		particles_derivatives[i]->lapl_v->x = compute_lapl(particles[i], Particle_get_v_x, setup->kernel, setup->kh);
 		particles_derivatives[i]->lapl_v->y = compute_lapl(particles[i], Particle_get_v_y, setup->kernel, setup->kh);
 		compute_grad(particles[i], Particle_get_P, setup->kernel, setup->kh, particles_derivatives[i]->grad_P);
-        compute_Cs(particles[i], setup->kernel, setup->kh);
 		compute_grad(particles[i], Particle_get_Cs, setup->kernel, setup->kh, particles_derivatives[i]->grad_Cs);
 		particles_derivatives[i]->lapl_Cs = compute_lapl(particles[i], Particle_get_Cs, setup->kernel, setup->kh);
+        */
+        
+        compute_derivatives(particles[i], particles_derivatives[i], setup->kernel, setup->kh);
 		// assemble_residual_NS(particles[i], particles_derivatives[i], residuals[i], setup);
 		compute_normal(particles[i], particles_derivatives[i]);
-        
         assemble_residual_NS(particles[i], particles_derivatives[i], residuals[i], setup);
         time_integrate(particles[i], residuals[i], setup->timestep);
 	}
@@ -202,8 +206,8 @@ void time_integrate(Particle* particle, Residual* residual, double delta_t) {
 	double B = squared(particle->param->sound_speed) * particle->param->rho_0 / particle->param->gamma;
 	// double B = 0.85*1e5;
 	particle->P = B * (pow(particle->rho / particle->param->rho_0, particle->param->gamma) - 1);
-
 }
+
 void time_integrate_CSPM(Particle* particle, Particle_derivatives *dp, Residual* residual, Setup* setup) {
 
 	// Update density and velocity with an Euler explicit scheme (TODO: implement more accurate and more stable schemes)
@@ -349,7 +353,6 @@ void velocity_reflection_horizontal(Particle* pi, double CR, double CF){
 }
 void reflective_boundary(Particle** p, int n_p, Boundary* boundary, double Rp){
 	// We have just computed the time integration. We correct the positions of the particles
-	printf("je suis rentre dans reflective boundary \n");
 	double CF = boundary->CF;
 	double CR = boundary->CR;
 	for(int i = 0; i < n_p ; i++){

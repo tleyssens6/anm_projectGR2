@@ -14,4 +14,9 @@ double compute_div(Particle * particle, xy_getter get, Kernel kernel, double kh)
 void compute_grad(Particle * particle, scalar_getter get, Kernel kernel, double kh, xy* grad);
 double compute_lapl(Particle *particle, scalar_getter get, Kernel kernel, double kh);
 
+
+// Thomas' function
+void compute_derivatives(Particle* p, Particle_derivatives* deriv, Kernel kernel, double kh);
+
+
 #endif
