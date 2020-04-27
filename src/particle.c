@@ -96,7 +96,6 @@ void Verlet_init(Verlet* v, double L, int T)
 {
     v->L = L;
     v->T = T;
-    printf("initianlisation went fine\n");
 }
 
 Particle* Particle_new(int index, double m, xy* pos, xy* v, double rho_0, double mu, double c_0, double gamma, double sigma) {
@@ -282,7 +281,7 @@ void add_potential_neighbors_from_cell(Particle* p, Cell* cell , double r, doubl
     ListNode *node = cell->particles->head;
     while (node != NULL) {
         Particle* q = (Particle*)node->v;
-        if(check_distance(p->pos, q->pos, r+L)) {
+        if(check_distance(p->pos, q->pos, r+L) && p->index != q->index) {
             List_append(p->potential_neighborhood, q);
             if (check_distance(p->pos, q->pos, r)) {
                 List_append(p->neighborhood,q);

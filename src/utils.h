@@ -42,4 +42,9 @@ xy* generate_circle(int k, int n, int nb, double radius);
 
 //xy* correct_grad(xy *current_grad, Particle *p, Setup *setup, Kernel kernel);
 
+
+// Thomas functions
+void xy_set(xy* p, double x, double y);
+
+
 #endif

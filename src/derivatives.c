@@ -1,5 +1,53 @@
 #include "derivatives.h"
 
+void compute_derivatives(Particle* p, Particle_derivatives* deriv, Kernel kernel, double kh)
+{
+    ListNode *node = p->neighborhood->head;
+    deriv->div_v = 0.;
+    xy_reset(deriv->lapl_v);
+    xy_reset(deriv->grad_P);
+    xy_reset(deriv->grad_Cs);
+    deriv->lapl_Cs = 0.;
+    xy *grad_W = xy_new(0.,0.);
+    xy *DXij = xy_new(0.,0.);
+    xy* v_q;
+    xy* v_p = Particle_get_v(p);
+    double P_p = Particle_get_P(p);
+    double P_q;
+    
+    double Cs_p = Particle_get_Cs(p);
+    double Cs_q;
+    
+    double d2;
+    
+    while(node != NULL) {
+        Particle *q = node->v;
+        xy *grad_W = grad_kernel(p->pos, q->pos, kh, kernel);
+        v_q = Particle_get_v(q);
+        deriv->div_v += ((v_p->x - v_q->x) * grad_W->x + (v_p->y - v_q->y) * grad_W->y) * q->m/p->rho;
+        d2 = squared(p->pos->x - q->pos->x) + squared(p->pos->y - q->pos->y);
+        xy *DXij = xy_new((p->pos->x - q->pos->x) / d2, (p->pos->y - q->pos->y) / d2);
+        deriv->lapl_v->x += 2 * (q->m/q->rho) * (v_p->x - v_q->x) * (DXij->x * grad_W->x + DXij->y * grad_W->y);
+        deriv->lapl_v->y += 2 * (q->m/q->rho) * (v_p->y - v_q->y) * (DXij->x * grad_W->x + DXij->y * grad_W->y);
+        P_q = Particle_get_P(q);
+        deriv->grad_P->x -= p->rho * q->m * (P_p/squared(p->rho) + P_q/squared(q->rho)) * grad_W->x;
+        deriv->grad_P->y -= p->rho * q->m * (P_p/squared(p->rho) + P_q/squared(q->rho)) * grad_W->y;
+        Cs_q = Particle_get_Cs(q);
+        deriv->grad_Cs->x -= p->rho * q->m * (Cs_p/squared(p->rho) + Cs_q/squared(q->rho)) * grad_W->x;
+        deriv->grad_Cs->y -= p->rho * q->m * (Cs_p/squared(p->rho) + Cs_q/squared(q->rho)) * grad_W->y;
+        deriv->lapl_Cs += 2 * (q->m/q->rho) * (Cs_p - Cs_q) * (DXij->x * grad_W->x + DXij->y * grad_W->y);
+        node = node->next;
+        free(grad_W);
+        free(DXij);
+    }
+    //free(grad_W);
+    //free(DXij);
+    //free(v_q);
+    //free(v_p);
+}
+
+
+
 double compute_div(Particle* pi, xy_getter get, Kernel kernel, double kh) {
     double div = 0;
     xy *fi = get(pi);
