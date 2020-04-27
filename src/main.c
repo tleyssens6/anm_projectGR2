@@ -85,13 +85,13 @@ void dam_break(){
 		}
 	}
 	// Setup grid
-	Grid *grid = Grid_new_verlet(-L, L, -H, H, kh, &verlet);
+	Grid *grid = Grid_new(-3*l, 4*l, -H, H, kh);
     //Grid *grid = Grid_new(-L, L, -H, H, kh);
 	// Setup BOUNDARY
 	double lb = 0.420;
 	double hb = 0.440;
 	double Rp = 0.001; //particle radius
-	Boundary* boundary = Boundary_new(-2*l-Rp,-Rp,lb-l+Rp,-Rp,-l-Rp,hb-l+Rp,CR,CF);
+	Boundary* boundary = Boundary_new(-2*l-Rp,-Rp,3*l+Rp,-Rp,-l-Rp,hb-l+Rp,CR,CF);
 
 	// Setup setup
 	Setup *setup = Setup_new(n_iter, dt, kh, &verlet, kernel, surface_detection, interface_threshold, XSPH_epsilon, gravity);
