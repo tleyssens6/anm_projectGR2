@@ -44,7 +44,7 @@ Grid* Grid_new_verlet(double x1, double x2, double y1, double y2, double h, Verl
     // Build the grid
     int nCellx = ceil((x2-x1) / (h+v->L));
     int nCelly = ceil((y2-y1) / (h+v->L));
-    printf("Grid size: (%d,%d)\n", nCellx, nCelly);
+    printf("nCellx = %d, nCelly = %d \n",nCellx, nCelly);
     Cell*** cells = (Cell***) malloc(nCellx * sizeof(Cell**));
 
     for(int i = 0; i < nCellx; i++) {
@@ -61,9 +61,13 @@ Grid* Grid_new_verlet(double x1, double x2, double y1, double y2, double h, Verl
             cells[i][j]->visited = false;
             // Assign neighbor cells
             cells[i][j]->neighboring_cells = List_new();
-            for (int di = -1; di <= 1; di++) for (int dj = -1; dj <= 1; dj++)
-                if ((di || dj) && i+di >= 0 && i+di < nCellx && j+dj >= 0 && j+dj < nCelly)
-                    List_append(cells[i][j]->neighboring_cells, cells[i+di][j+dj]);
+            for (int di = -1; di <= 1; di++) {
+                for (int dj = -1; dj <= 1; dj++){
+                    if ((di || dj) && i+di >= 0 && i+di < nCellx && j+dj >= 0 && j+dj < nCelly){
+                        List_append(cells[i][j]->neighboring_cells, cells[i+di][j+dj]);
+                    }
+                }
+            }
         }
     }
     Grid* grid = (Grid*)malloc(sizeof(Grid));
@@ -71,7 +75,7 @@ Grid* Grid_new_verlet(double x1, double x2, double y1, double y2, double h, Verl
     grid->bottom = y1,    grid->top = y1 + nCelly*h;
     grid->nCellx = nCellx;
     grid->nCelly = nCelly;
-    grid->h = h;
+    grid->h = h+v->L;
     grid->cells = cells;
     return grid;
 }
@@ -92,10 +96,11 @@ void Cell_free(Cell* cell) {
 	free(cell);
 }
 
-void Verlet_init(Verlet* v, double L, int T)
+void Verlet_init(Verlet* v, double L, int T, bool use_verlet)
 {
     v->L = L;
     v->T = T;
+    v->use_verlet = use_verlet;
 }
 
 Particle* Particle_new(int index, double m, xy* pos, xy* v, double rho_0, double mu, double c_0, double gamma, double sigma) {
@@ -105,11 +110,13 @@ Particle* Particle_new(int index, double m, xy* pos, xy* v, double rho_0, double
 	particle->pos = pos;
 	particle->rho = rho_0;
 	particle->v = v;
-	particle->P = 0.0; // assuming that the fluid is at rest (P is the dynamic pressure and not the absolute one!)
+    particle->P = 0.; // assuming that the fluid is at rest (P is the dynamic pressure and not the absolute one!)
 
 	particle->normal = xy_new(0.0,0.0);
 	particle->XSPH_correction = xy_new(0.0,0.0);
 	particle->on_free_surface = false;
+	
+	particle->on_boundary=false;
 
 	particle->param = malloc(sizeof(Physical_parameters));
 	particle->param->rho_0 = rho_0;
@@ -147,6 +154,7 @@ Particle_derivatives* Particle_derivatives_new(int index) {
 	particle_derivatives->grad_P = xy_new(0,0);
 	particle_derivatives->lapl_v = xy_new(0,0);
 	particle_derivatives->grad_Cs = xy_new(0,0);
+	particle_derivatives->art_visc = xy_new(0,0);
 	particle_derivatives->lapl_Cs = 0;
 	return particle_derivatives;
 }
@@ -155,6 +163,7 @@ void Particle_derivatives_free(Particle_derivatives* particle_derivatives) {
 	free(particle_derivatives->grad_P);
 	free(particle_derivatives->lapl_v);
 	free(particle_derivatives->grad_Cs);
+	free(particle_derivatives->art_visc);
 	free(particle_derivatives);
 }
 void Particle_derivatives_reset(Particle_derivatives *particle_derivatives) {
@@ -162,6 +171,7 @@ void Particle_derivatives_reset(Particle_derivatives *particle_derivatives) {
 	xy_reset(particle_derivatives->grad_P);
 	xy_reset(particle_derivatives->lapl_v);
 	xy_reset(particle_derivatives->grad_Cs);
+	xy_reset(particle_derivatives->art_visc);
 	particle_derivatives->lapl_Cs = 0;
 }
 
@@ -184,7 +194,7 @@ Cell* localize_particle(Grid *grid, Particle *p) {
 	int i = floor((p->pos->x - grid->left) / grid->h);
 	int j = floor((p->pos->y - grid->bottom) / grid->h);
 	if(i < 0 || i >= grid->nCellx || j < 0 || j >= grid->nCelly) {
-		fprintf(stderr, "ERROR: Particle is outside the grid :(\n");
+		fprintf(stderr, "ERROR: Particle %d is outside the grid (%f,%f) :(\n",p->index, p->pos->x, p->pos->y);
 		exit(0);
 	}
 	return grid->cells[i][j];
@@ -222,9 +232,6 @@ Cell* localize_verlet_particle(Grid *grid, Particle *p, Verlet* verlet) {
 }
 
 
-
-
-
 /////////////////////////update neighborhood////////////////////////
 // Add to the neighbors of particle p all particles q in cell s.t. |p-q| <= r
 void add_neighbors_from_cell(Particle* p, Cell* cell , double r) {
@@ -237,6 +244,7 @@ void add_neighbors_from_cell(Particle* p, Cell* cell , double r) {
 				List_append(p->neighborhood, q);
 		node = node->next;
 	}
+    Node_free(node);
 }
 
 // Add to particle p all its neighbors (from 9 cells)
@@ -248,6 +256,7 @@ void add_neighbors_from_cells(Grid* grid, Particle* p) {
 		add_neighbors_from_cell(p, cell, grid->h);
 		node = node->next;
 	}
+    Node_free(node);
 }
 
 // Among potential neighbors, filter the valid ones
@@ -261,10 +270,10 @@ void update_from_potential_neighbors(Particle** particles, int N, double r) {
 				List_append(p->neighborhood, q);
 			node = node->next;
 		}
+        Node_free(node);
 	}
 }
 
-// Create a list of potential neighbours for each particle. The potential particles are within a radius of h+L, where L is the verlet value corresponding to 􏱉h=􏱑(2Vmax· T·dt)
 void create_potential_neighborhood(Grid* grid, Particle* p, Verlet* v)
 {
     add_potential_neighbors_from_cell(p, p->cell, grid->h, v->L);
@@ -274,6 +283,7 @@ void create_potential_neighborhood(Grid* grid, Particle* p, Verlet* v)
         add_potential_neighbors_from_cell(p, neighbour_cell, grid->h, v->L);
         node = node->next;
     }
+    Node_free(node);
 }
 
 void add_potential_neighbors_from_cell(Particle* p, Cell* cell , double r, double L) {
@@ -289,25 +299,28 @@ void add_potential_neighbors_from_cell(Particle* p, Cell* cell , double r, doubl
         }
         node = node->next;
     }
+    Node_free(node);
 }
 
 
+
+
 void update_neighborhoods(Grid* grid, Particle** particles, int N, int iter, Verlet* verlet) {
-	// Clean the particles before update
-	reset_particles(particles, N, iter, verlet);
-	if(verlet==NULL) {
-		for (int i = 0 ; i < N; i++)
-			add_neighbors_from_cells(grid, particles[i]);
-	} else {
-		if (iter%verlet->T == 0) {
-			for (int i = 0; i < N; i++) {
+    // Clean the particles before update
+    reset_particles(particles, N, iter, verlet);
+    if(verlet->use_verlet==false) {
+        for (int i = 0 ; i < N; i++)
+            add_neighbors_from_cells(grid, particles[i]);
+    } else {
+        if (iter%verlet->T == 0) {
+            for (int i = 0; i < N; i++) {
                 create_potential_neighborhood(grid, particles[i], verlet);
-			}
-		}
+            }
+        }
         else {
             update_from_potential_neighbors(particles, N, grid->h);
         }
-	}
+    }
 }
 
 ////////////////////////////////////////////////////
@@ -354,6 +367,8 @@ Particle** build_particles(int N, double L) {
 		xy* pos = xy_new(x, y);
 		xy* vel = xy_new(0, 0);
 		particles[i] = Particle_new(i, 0, pos, vel, 0, 0, 0, 0, 0);
+        free(pos);
+        free(vel);
 	}
 	return particles;
 }

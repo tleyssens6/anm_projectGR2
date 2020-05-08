@@ -56,6 +56,8 @@ struct Particle {
 	xy* XSPH_correction; // Correction on the velocity field when updating the position of the particles	
 	bool on_free_surface; // boolean to know if particles is on the free surface (used for visualization)
 	
+	bool on_boundary; // boolean to detect if the particle is on the boundary and avoid the free surface force.
+	
 	Physical_parameters* param; // physical parameters associated to the particle
 
 	Cell* cell;    // cell that the particle belongs to
@@ -69,12 +71,14 @@ struct Particle_derivatives {
 	xy *grad_P;
 	xy *lapl_v;
 	xy *grad_Cs;
+	xy *art_visc;
 	double lapl_Cs;
 };
 
 struct Verlet {
 	double L;
 	int T;
+    bool use_verlet;
 };
 
 // Grid
@@ -113,23 +117,24 @@ void add_neighbors_from_cells(Grid* grid, Particle* p);
 void update_from_potential_neighbors(Particle** particles, int N, double r);
 void update_neighborhoods(Grid* grid, Particle** particles, int N, int iter, Verlet* verlet);
 
-// Improved update of the neighborhood
-void update_neighborhoods_improved(Grid* grid);
-
 // Build random particles
 Particle** build_particles(int N, double L);
 
 void reset_grid(Grid* grid);
 void reset_particles(Particle** particles, int N, int iter, Verlet* verlet);
 
+// Thomas functions
 
+Grid* Grid_new_verlet(double x1, double x2, double y1, double y2, double h, Verlet* v);
 
-// Thomas' functions
+void Verlet_init(Verlet* v, double L, int T, bool use_verlet);
+
+void update_verlet_cells(Grid* grid, Particle** particles, int N, Verlet* verlet);
+
+Cell* localize_verlet_particle(Grid *grid, Particle *p, Verlet* verlet);
 
 void create_potential_neighborhood(Grid* grid, Particle* p, Verlet* v);
+
 void add_potential_neighbors_from_cell(Particle* p, Cell* cell , double r, double L);
-void update_verlet_cells(Grid* grid, Particle** particles, int N, Verlet* verlet);
-Cell* localize_verlet_particle(Grid *grid, Particle *p, Verlet* verlet);
-Grid* Grid_new_verlet(double x1, double x2, double y1, double y2, double h, Verlet* v);
-void Verlet_init(Verlet* v, double L, int T);
+
 #endif

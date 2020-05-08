@@ -27,7 +27,9 @@ struct xy {
 
 List* List_new();
 void List_append(List *l, void *v);
-void List_free(List*, destructor);
+void List_free(List* list, destructor des);
+
+void Node_free(ListNode* node);
 
 xy* xy_new(double x, double y);
 void xy_reset(xy *p);
@@ -41,10 +43,5 @@ xy* map_to_circle(xy* pos_square);
 xy* generate_circle(int k, int n, int nb, double radius);
 
 //xy* correct_grad(xy *current_grad, Particle *p, Setup *setup, Kernel kernel);
-
-
-// Thomas functions
-void xy_set(xy* p, double x, double y);
-
 
 #endif

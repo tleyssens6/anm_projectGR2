@@ -53,7 +53,8 @@ void Setup_free(Setup* setup);
 Residual* Residual_new();
 void free_Residuals(Residual** residuals,int N);
 
-void simulate_boundary(Grid* grid, Particle** particles, Particle_derivatives** particles_derivatives, Residual** residuals, int n_p, update_positions update_positions, Setup* setup, Animation* animation, Boundary* boundary, Verlet* verlet);
+void simulate_boundary(Grid* grid, Particle** particles, Particle_derivatives** particles_derivatives, Residual** residuals, int n_p, update_positions update_positions, Setup* setup, Animation* animation, Boundary* boundary);
+void simulate_boundary_flow(Grid* grid, Particle** particles, Particle_derivatives** particles_derivatives, Residual** residuals, int n_p, update_positions update_positions, Setup* setup, Animation* animation, Boundary* boundary);
 void update_positions_seminar_5(Grid* grid, Particle** particles, Particle_derivatives** particles_derivatives, Residual** residuals, int n_p, Setup* setup);
 
 void compute_Cs(Particle *particle, Kernel kernel, double kh);
@@ -71,5 +72,10 @@ void compute_normal(Particle *particle, Particle_derivatives* particle_derivativ
 Boundary* Boundary_new(double xleft1, double xleft2, double xright, double ybottom1, double ybottom2, double ytop, double CR, double CF);
 void Boundary_free(Boundary* boundary);
 void reflective_boundary(Particle** p, int n_p, Boundary* boundary,double Rp);
+
+
+// Thomas functions
+
+xy* compute_surfaceTension(Particle* p, Particle_derivatives* d);
 
 #endif

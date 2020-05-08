@@ -33,16 +33,19 @@ void List_free(List* list, destructor des) {
 	free(list);
 }
 
+void Node_free(ListNode* node) {
+    ListNode* node1;
+    while(node != NULL){
+        node1 = node->next;
+        free(node);
+        node = node1;
+    }
+}
+
 xy* xy_new(double x, double y) {
 	xy* pt = (xy*)malloc(sizeof(xy));
 	pt->x = x, pt->y = y;
 	return pt;
-}
-
-void xy_set(xy* p, double x, double y)
-{
-    p->x = x;
-    p->y = y;
 }
 
 void xy_reset(xy *p) {
