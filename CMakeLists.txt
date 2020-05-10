@@ -30,10 +30,5 @@ add_subdirectory(deps/BOV)
 target_link_libraries(anm 
                       PUBLIC bov)
 
-# find PETSc
-find_package(PETSc REQUIRED)
-target_include_directories(anm PRIVATE "${PETSC_INCLUDES}")
-target_link_libraries(anm PRIVATE "${PETSC_LIBRARIES}")
-
 # set anm as the startup project in visual studio
 set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT anm)
