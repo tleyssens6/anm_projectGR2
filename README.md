@@ -20,3 +20,6 @@ Akilan Mathiazhagan
 Louis Alsteens
 Thomas Leyssens
 
+
+
+NB : there seems to be slight unsolvable bug when running the simulation on windows (but not on mac...). If this is the case, please refer to the sph.c function, and comment line ... it will work, but the verlet algorithm will just not be as effective.
