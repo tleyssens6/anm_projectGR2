@@ -5,14 +5,8 @@ void compute_derivatives(Particle* p, Particle_derivatives* deriv, Kernel kernel
 {
     
     ListNode *node = p->neighborhood->head;
-    //deriv->div_v = 0.;
-    //xy_reset(deriv->lapl_v);
-    //xy_reset(deriv->grad_P);
-    //xy_reset(deriv->grad_Cs);
     deriv->lapl_Cs = 0.;
     Particle_derivatives_reset(deriv);
-    //xy *grad_W = xy_new(0.,0.);
-    //xy *DXij = xy_new(0.,0.);
     xy* v_q;
     xy* v_p = Particle_get_v(p);
     double P_p = Particle_get_P(p);
@@ -58,7 +52,7 @@ void compute_derivatives(Particle* p, Particle_derivatives* deriv, Kernel kernel
         xy* dx = xy_new(p->pos->x - q->pos->x, p->pos->y - q->pos->y);
         double norm_dx_square = dx->x*dx->x + dx->y*dx->y;
         double dv_dot_dx = dv->x*dx->x + dv->y*dx->y;
-        double alpha = 0.2;
+        double alpha = 0.3;
         double beta = 0.;
         double c = p->param->sound_speed;
         if (dv_dot_dx < 0.) {
@@ -91,7 +85,6 @@ double compute_div(Particle* pi, xy_getter get, Kernel kernel, double kh) {
         Particle *pj = node->v;
 
         xy *grad_W = grad_kernel(pi->pos, pj->pos, kh, kernel);
-        // correct_grad_local(grad_W, pi, pj, kh, kernel);
 
         xy *fj = get(pj);
         div += ((fj->x - fi->x) * grad_W->x)*pj->m;
@@ -105,30 +98,22 @@ double compute_div(Particle* pi, xy_getter get, Kernel kernel, double kh) {
 }
 
 void compute_grad(Particle* pi, scalar_getter get, Kernel kernel, double kh,xy* grad) {
-
+    
 	double gx = 0;
 	double gy = 0;
-  double fi = get(pi);
-  ListNode *node = pi->neighborhood->head;
-  //printf("Computing gradient of (%lf, %lf), fi = %lf\n", particle->pos->x, particle->pos->y, fi);
-  while(node != NULL) {
-      Particle *pj = node->v;
-      xy *grad_W = grad_kernel(pi->pos, pj->pos, kh, kernel);
-
-      double fj = get(pj);
-      //printf("Position of pj: (%lf, %lf), fj = %lf\n", pj->pos->x, pj->pos->y, fj);
-      gx += pi->rho * pj->m * (fi/squared(pi->rho) + fj/squared(pj->rho)) * grad_W->x; // sign is not the same as in the def...
-      gy += pi->rho * pj->m * (fi/squared(pi->rho) + fj/squared(pj->rho)) * grad_W->y;
-      free(grad_W);
-      //printf("grad = (%lf, %lf), fj = %lf\n", grad->x, grad->y, fj);
-      node = node->next;
-  }
-  // xy *cg = xy_new(gx,gy);
-  grad->x = gx;
-  grad->y = gy;
-  // correct_grad(grad, pi, kh, kernel);
-
-  // free(cg);
+    double fi = get(pi);
+    ListNode *node = pi->neighborhood->head;
+    while(node != NULL) {
+        Particle *pj = node->v;
+        xy *grad_W = grad_kernel(pi->pos, pj->pos, kh, kernel);
+        double fj = get(pj);
+        gx += pi->rho * pj->m * (fi/squared(pi->rho) + fj/squared(pj->rho)) * grad_W->x;
+        gy += pi->rho * pj->m * (fi/squared(pi->rho) + fj/squared(pj->rho)) * grad_W->y;
+        free(grad_W);
+        node = node->next;
+    }
+    grad->x = gx;
+    grad->y = gy;
 }
 
 double compute_lapl(Particle *pi, scalar_getter get, Kernel kernel, double kh) {
@@ -138,12 +123,9 @@ double compute_lapl(Particle *pi, scalar_getter get, Kernel kernel, double kh) {
     while(node != NULL) {
         Particle *pj = node->v;
         xy *grad_W = grad_kernel(pi->pos, pj->pos, kh, kernel);
-        // correct_grad_local(grad_W, pi, pj, kh, kernel);
-
         double fj = get(pj);
-        double d2 = squared(pi->pos->x - pj->pos->x) + squared(pi->pos->y - pj->pos->y); // squared distance between particles
-        // xy *DXij = xy_new((pi->pos->x - pj->pos->x) / d2, (pi->pos->y - pj->pos->y) / d2); // Delta X_{ij}
-        xy *DXij = xy_new((pi->pos->x - pj->pos->x) / d2, (pi->pos->y - pj->pos->y) / d2); // WARNING
+        double d2 = squared(pi->pos->x - pj->pos->x) + squared(pi->pos->y - pj->pos->y);
+        xy *DXij = xy_new((pi->pos->x - pj->pos->x) / d2, (pi->pos->y - pj->pos->y) / d2);
         if(d2 != 0) lapl += 2 * (pj->m/pj->rho) * (fi - fj) * (DXij->x * grad_W->x + DXij->y * grad_W->y);
         free(grad_W);
         free(DXij);

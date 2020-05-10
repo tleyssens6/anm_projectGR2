@@ -77,6 +77,7 @@ struct Particle_derivatives {
 
 struct Verlet {
 	double L;
+    double L_initial;
 	int T;
     bool use_verlet;
 };
@@ -123,15 +124,15 @@ Particle** build_particles(int N, double L);
 void reset_grid(Grid* grid);
 void reset_particles(Particle** particles, int N, int iter, Verlet* verlet);
 
-// Thomas functions
+// Verlet functions
 
 Grid* Grid_new_verlet(double x1, double x2, double y1, double y2, double h, Verlet* v);
 
-void Verlet_init(Verlet* v, double L, int T, bool use_verlet);
+void Verlet_init(Verlet* v, double L, double L_initial, int T, bool use_verlet);
 
 void update_verlet_cells(Grid* grid, Particle** particles, int N, Verlet* verlet);
 
-Cell* localize_verlet_particle(Grid *grid, Particle *p, Verlet* verlet);
+Cell* localize_particle_verlet(Grid *grid, Particle *p, Verlet* verlet);
 
 void create_potential_neighborhood(Grid* grid, Particle* p, Verlet* v);
 

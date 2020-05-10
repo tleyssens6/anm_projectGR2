@@ -24,19 +24,12 @@ void Animation_free(Animation* animation);
 
 void fillData(GLfloat(*data_pool)[8], GLfloat(*data_flow)[8], Particle** particles, int N_pool, int N_flow);
 bov_points_t * load_Grid(Grid* grid,double scale);
-void colormap_cell(Particle* p, float color[3]);
-void colormap_uni_color(float color[3]);
-void colormap_uni_color_2(float color[3]);
-void colormap_fs(Particle *p, float color[3], double max_norm);
-void colours_neighbors(GLfloat(*data)[8], Particle** particles, int index);
-
-//void display_particles(Particle** particles, Animation* animation,bool end, int iter);
 void display_particles_boundary(Particle** particles, Animation* animation,bool end, int iter, double bounds[6]);
 
 // thomas functions
 
 void display_neighbours(bov_window_t* window, Animation* animation, Particle** particles, int N);
-
+void fillData_pressureGrad(GLfloat(*data_pool)[8], GLfloat(*data_flow)[8], Particle** particles, int N_pool, int N_flow);
 
 
 

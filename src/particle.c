@@ -1,6 +1,10 @@
 #include "particle.h"
 
-// Private functions
+
+
+
+/* All these functions are related to the particles and the cells and the neighborhood search. */
+
 bool check_distance(xy *p, xy *q, double r);
 
 Grid* Grid_new(double x1, double x2, double y1, double y2, double h) {
@@ -24,9 +28,12 @@ Grid* Grid_new(double x1, double x2, double y1, double y2, double h) {
 			cells[i][j]->visited = false;
 			// Assign neighbor cells
 			cells[i][j]->neighboring_cells = List_new();
-			for (int di = -1; di <= 1; di++) for (int dj = -1; dj <= 1; dj++)
-				if ((di || dj) && i+di >= 0 && i+di < nCellx && j+dj >= 0 && j+dj < nCelly)
-					List_append(cells[i][j]->neighboring_cells, cells[i+di][j+dj]);
+            for (int di = -1; di <= 1; di++) for (int dj = -1; dj <= 1; dj++){
+                if ((di || dj) && i+di >= 0 && i+di < nCellx && j+dj >= 0 && j+dj < nCelly) {
+                    List_append(cells[i][j]->neighboring_cells, cells[i+di][j+dj]);
+                }
+            }
+
 		}
 	}
 	Grid* grid = (Grid*)malloc(sizeof(Grid));
@@ -36,14 +43,15 @@ Grid* Grid_new(double x1, double x2, double y1, double y2, double h) {
 	grid->nCelly = nCelly;
 	grid->h = h;
 	grid->cells = cells;
+    printf("%f,%f,%f,%f \n",grid->left,grid->right,grid->bottom,grid->top);
 	return grid;
 }
 
 Grid* Grid_new_verlet(double x1, double x2, double y1, double y2, double h, Verlet* v)
 {
     // Build the grid
-    int nCellx = ceil((x2-x1) / (h+v->L));
-    int nCelly = ceil((y2-y1) / (h+v->L));
+    int nCellx = ceil((x2-x1) / (h+v->L_initial));
+    int nCelly = ceil((y2-y1) / (h+v->L_initial));
     printf("nCellx = %d, nCelly = %d \n",nCellx, nCelly);
     Cell*** cells = (Cell***) malloc(nCellx * sizeof(Cell**));
 
@@ -71,12 +79,13 @@ Grid* Grid_new_verlet(double x1, double x2, double y1, double y2, double h, Verl
         }
     }
     Grid* grid = (Grid*)malloc(sizeof(Grid));
-    grid->left = x1,    grid->right = x1 + nCellx*h; // not very elegant but ok...
-    grid->bottom = y1,    grid->top = y1 + nCelly*h;
+    grid->left = x1,    grid->right = x1 + nCellx*(h+v->L_initial); // not very elegant but ok...
+    grid->bottom = y1,    grid->top = y1 + nCelly*(h+v->L_initial);
     grid->nCellx = nCellx;
     grid->nCelly = nCelly;
-    grid->h = h+v->L;
+    grid->h = h;
     grid->cells = cells;
+    printf("%f,%f,%f,%f \n",grid->left,grid->right,grid->bottom,grid->top);
     return grid;
 }
 
@@ -96,10 +105,11 @@ void Cell_free(Cell* cell) {
 	free(cell);
 }
 
-void Verlet_init(Verlet* v, double L, int T, bool use_verlet)
+void Verlet_init(Verlet* v, double L, double L_initial, int T, bool use_verlet)
 {
     v->L = L;
     v->T = T;
+    v->L_initial = L_initial;
     v->use_verlet = use_verlet;
 }
 
@@ -200,6 +210,16 @@ Cell* localize_particle(Grid *grid, Particle *p) {
 	return grid->cells[i][j];
 }
 
+Cell* localize_particle_verlet(Grid *grid, Particle *p, Verlet* verlet) {
+    int i = floor((p->pos->x - grid->left) / (grid->h + verlet->L_initial));
+    int j = floor((p->pos->y - grid->bottom) / (grid->h + verlet->L_initial));
+    if(i < 0 || i >= grid->nCellx || j < 0 || j >= grid->nCelly) {
+        fprintf(stderr, "ERROR: Particle %d is outside the grid (%f,%f) :(\n",p->index, p->pos->x, p->pos->y);
+        exit(0);
+    }
+    return grid->cells[i][j];
+}
+
 // Update links between cells and particles
 void update_cells(Grid* grid, Particle** particles, int N) {
 	// Clean the grid before update
@@ -215,24 +235,12 @@ void update_verlet_cells(Grid* grid, Particle** particles, int N, Verlet* verlet
     // Clean the grid before update
     reset_grid(grid);
     for(int i = 0; i < N; i++){
-        Cell* cell = localize_particle(grid, particles[i]);
+        Cell* cell = localize_particle_verlet(grid, particles[i], verlet);
         particles[i]->cell = cell; // link cell to particle
         List_append(cell->particles, particles[i]); // link particle to cell
     }
 }
 
-Cell* localize_verlet_particle(Grid *grid, Particle *p, Verlet* verlet) {
-    int i = floor((p->pos->x - grid->left) / (grid->h+verlet->L));
-    int j = floor((p->pos->y - grid->bottom) / (grid->h+verlet->L));
-    if(i < 0 || i >= grid->nCellx || j < 0 || j >= grid->nCelly) {
-        fprintf(stderr, "ERROR: Particle is outside the grid :(\n");
-        exit(0);
-    }
-    return grid->cells[i][j];
-}
-
-
-/////////////////////////update neighborhood////////////////////////
 // Add to the neighbors of particle p all particles q in cell s.t. |p-q| <= r
 void add_neighbors_from_cell(Particle* p, Cell* cell , double r) {
 	// Iterate over particles in cell
@@ -291,7 +299,7 @@ void add_potential_neighbors_from_cell(Particle* p, Cell* cell , double r, doubl
     ListNode *node = cell->particles->head;
     while (node != NULL) {
         Particle* q = (Particle*)node->v;
-        if(check_distance(p->pos, q->pos, r+L) && p->index != q->index) {
+        if(check_distance(p->pos, q->pos, r+L)) {
             List_append(p->potential_neighborhood, q);
             if (check_distance(p->pos, q->pos, r)) {
                 List_append(p->neighborhood,q);
@@ -302,13 +310,9 @@ void add_potential_neighbors_from_cell(Particle* p, Cell* cell , double r, doubl
     Node_free(node);
 }
 
-
-
-
 void update_neighborhoods(Grid* grid, Particle** particles, int N, int iter, Verlet* verlet) {
-    // Clean the particles before update
     reset_particles(particles, N, iter, verlet);
-    if(verlet->use_verlet==false) {
+    if(!verlet->use_verlet) {
         for (int i = 0 ; i < N; i++)
             add_neighbors_from_cells(grid, particles[i]);
     } else {

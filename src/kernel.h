@@ -4,11 +4,10 @@
 
 typedef enum Kernel Kernel;
 
-enum Kernel {Cubic,Lucy,NewQuartic,Quintic};
+enum Kernel {Cubic};
 
 xy* grad_kernel(xy* p1, xy* p2, double kh, Kernel kernel);
 double eval_kernel(xy *p1, xy *p2, double kh, Kernel kernel);
-double derivative_kernel(double r, double h, Kernel kernel);
 double deriv2_Cubic_kernel(xy* p1, xy* p2, double kh, Kernel kernel);
 
 #endif
