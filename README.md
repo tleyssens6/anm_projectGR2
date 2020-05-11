@@ -14,6 +14,9 @@ Particle.c contains the functions linked to the particles and their neighborhood
 in kernel.c, the computation of the smoothing function may be found.
 in derivatives.c, the different spatial derivatives are computed. 
 
+A video showing some results of simulations can be found with this link : 
+https://www.youtube.com/watch?v=XOxVkI6l2Dc&feature=youtu.be
+
 Credits to : 
 
 Akilan Mathiazhagan
